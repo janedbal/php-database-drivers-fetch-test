@@ -1,0 +1,7 @@
+FROM php:7.3-cli
+
+COPY ./docker/docker-setup-lte74.sh /opt/src/scripts/setup.sh
+RUN /opt/src/scripts/setup.sh
+
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+

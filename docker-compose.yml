@@ -1,0 +1,90 @@
+version: "3.4"
+
+services:
+    mysql:
+        image: mysql:8.0
+        command: mysqld --default-authentication-plugin=mysql_native_password
+        ports:
+            - 3306:3306
+        environment:
+            MYSQL_ROOT_PASSWORD: secret
+            MYSQL_DATABASE: foo
+
+    pgsql:
+        image: postgres:13
+        ports:
+            - 5432:5432
+        environment:
+            POSTGRES_PASSWORD: secret
+            POSTGRES_USER: root
+            POSTGRES_DB: foo
+
+    php72:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile72
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+            - .:/app
+
+    php73:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile73
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+            - .:/app
+
+    php74:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile74
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+            - .:/app
+
+    php80:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile80
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+            - .:/app
+
+    php81:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile81
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+          - .:/app
+
+    php82:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile82
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+          - .:/app
+
+    php83:
+        depends_on: [mysql, pgsql]
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile83
+        working_dir: /app
+        user: ${UID:-1000}:${GID:-1000}
+        volumes:
+          - .:/app
