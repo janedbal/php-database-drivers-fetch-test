@@ -18,21 +18,22 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 
 ### Results
 
-| PHP version | Driver     | Configuration / Note                    | INT     | FLOAT   | DECIMAL            | BOOL              |
-|-------------|------------|-----------------------------------------|---------|---------|--------------------|-------------------|
-|             | sqlite3    |                                         | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
-|             | mysqli     | (using prepared statements)<sup>1</sup> | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
-| `< 8.1`     | pdo_sqlite |                                         | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-| `>= 8.1`    | pdo_sqlite |                                         | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
-|             | pdo_sqlite | PDO::ATTR_STRINGIFY_FETCHES: true       | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-| `< 8.1`     | pdo_mysql  |                                         | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-| `>= 8.1`    | pdo_mysql  |                                         | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
-|             | pdo_mysql  | PDO::ATTR_EMULATE_PREPARES: false       | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
-|             | pdo_mysql  | PDO::ATTR_STRINGIFY_FETCHES: true       | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-|             | pdo_pgsql  |                                         | `123`   | `'0.1'` | `'0.1'`            | `true` or `false` |
-| `< 8.1`     | pdo_pgsql  | PDO::ATTR_STRINGIFY_FETCHES: true       | `'123'` | `'0.1'` | `'0.1'`            | `true` or `false` |
-| `>= 8.1`    | pdo_pgsql  | PDO::ATTR_STRINGIFY_FETCHES: true       | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-|             | pgsql      |                                         | `123`   | `'0.1'` | `0.1` <sup>2</sup> | `true` or `false` |
+| PHP version | Driver     | Configuration / Note                                                       | INT     | FLOAT   | DECIMAL            | BOOL              |
+|-------------|------------|----------------------------------------------------------------------------|---------|---------|--------------------|-------------------|
+|             | sqlite3    |                                                                            | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
+|             | mysqli     | (using prepared statements)<sup>1</sup>                                    | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
+| `< 8.1`     | pdo_sqlite |                                                                            | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
+| `>= 8.1`    | pdo_sqlite |                                                                            | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
+|             | pdo_sqlite | PDO::ATTR_STRINGIFY_FETCHES: true                                          | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
+| `< 8.1`     | pdo_mysql  |                                                                            | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
+| `>= 8.1`    | pdo_mysql  |                                                                            | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
+|             | pdo_mysql  | PDO::ATTR_EMULATE_PREPARES: false                                          | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
+|             | pdo_mysql  | PDO::ATTR_STRINGIFY_FETCHES: true                                          | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
+|             | pdo_mysql  | PDO::ATTR_STRINGIFY_FETCHES: true <br/> PDO::ATTR_EMULATE_PREPARES: false  | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
+|             | pdo_pgsql  |                                                                            | `123`   | `'0.1'` | `'0.1'`            | `true` or `false` |
+| `< 8.1`     | pdo_pgsql  | PDO::ATTR_STRINGIFY_FETCHES: true                                          | `'123'` | `'0.1'` | `'0.1'`            | `true` or `false` |
+| `>= 8.1`    | pdo_pgsql  | PDO::ATTR_STRINGIFY_FETCHES: true                                          | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
+|             | pgsql      |                                                                            | `123`   | `'0.1'` | `0.1` <sup>2</sup> | `true` or `false` |
 
 Notes:
 - <sup>1</sup>mysqli stringifies all values by default when non-prepared statements are used, this can be changed by `MYSQLI_OPT_INT_AND_FLOAT_NATIVE: false` ([docs](https://www.php.net/manual/en/mysqli.quickstart.prepared-statements.php#example-4303))
