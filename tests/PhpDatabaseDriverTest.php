@@ -51,17 +51,23 @@ class PhpDatabaseDriverTest extends TestCase
         $nativeConnection = $this->getNativeConnection($connection);
         $this->setupAttributes($nativeConnection, $connectionAttributes);
 
+        $connection->executeQuery('DROP TABLE IF EXISTS test');
         $connection->executeQuery('CREATE TABLE test (col_bool BOOLEAN, col_float FLOAT, col_decimal DECIMAL(2, 1), col_int INT, col_bigint BIGINT)');
-        $connection->executeQuery('INSERT INTO test VALUES (TRUE, 0.1, 0.1, 0, 2147483648)');
+        $connection->executeStatement('INSERT INTO test VALUES (TRUE, 0.125, 0.1, 0, 2147483648)');
 
         $resultLiterals = $connection->executeQuery('
             SELECT
                 (TRUE),
                 (FALSE),
                 0.1,
-                0.1e0,
+                0.125e0,
                 0,
-                2147483648
+                2147483648,
+                COUNT(1),
+                SUM(0),
+                SUM(0.125e0),
+                SUM(0.1),
+                LENGTH(\'\')
         ')->fetchNumeric();
 
         $resultColumns = $connection->executeQuery('
@@ -71,8 +77,14 @@ class PhpDatabaseDriverTest extends TestCase
                 col_decimal,
                 col_float,
                 col_int,
-                col_bigint
+                col_bigint,
+                COUNT(col_int),
+                SUM(col_int),
+                SUM(col_float),
+                SUM(col_decimal),
+                LENGTH(\'\')
             FROM test
+            GROUP BY col_int, col_float, col_decimal, col_bigint, col_bool
         ')->fetchNumeric();
 
         $connection->executeQuery('DROP TABLE test');
@@ -91,15 +103,15 @@ class PhpDatabaseDriverTest extends TestCase
 
     public function provideCases(): iterable
     {
-        // SELECT (columns)          bool, bool,  float, decimal,  int, bigint
-        // SELECT (literals)         TRUE, FALSE,  0.1,   0.1e0,   0,   2147483648
-        $nativeMysql =              [1,    0,     '0.1',  0.1,     0,   2147483648];
-        $nativeSqlite =             [1,    0,      0.1,   0.1,     0,   2147483648];
-        $nativePostgre =            [true, false, '0.1', '0.1',    0,   2147483648];
-        $nativePostgreColumnFetch = [true, false, '0.1',  0.1,     0,   2147483648];
+        // SELECT (columns)          bool, bool,  decimal, float,    int, bigint,     COUNT(int), SUM(int), SUM(float),   SUM(decimal), LENGTH(''),
+        // SELECT (literals)         TRUE, FALSE,  0.1,    0.125e0,  0,   2147483648, COUNT(1),   SUM(0),   SUM(0.125e0), SUM(0.1),     LENGTH(''),
+        $nativeMysql =              [1,    0,     '0.1',   0.125,    0,   2147483648,   1,        '0',      0.125,        '0.1',         0];
+        $nativeSqlite =             [1,    0,      0.1,    0.125,    0,   2147483648,   1,         0,       0.125,         0.1,          0];
+        $nativePostgre =            [true, false, '0.1',  '0.125',   0,   2147483648,   1,         0,      '0.125',       '0.1',         0];
+        $nativePostgreColumnFetch = [true, false, '0.1',   0.125,    0,   2147483648,   1,         0,       0.125,        '0.1',         0];
 
-        $stringified =              ['1',  '0',   '0.1', '0.1',   '0', '2147483648'];
-        $stringifiedOldPostgre =    [true, false, '0.1', '0.1',   '0', '2147483648'];
+        $stringified =              ['1',  '0',   '0.1',  '0.125',  '0', '2147483648', '1',       '0',      '0.125',     '0.1',         '0'];
+        $stringifiedOldPostgre =    [true, false, '0.1',  '0.125',  '0', '2147483648', '1',       '0',      '0.125',     '0.1',         '0'];
 
 
         yield 'sqlite3' => [

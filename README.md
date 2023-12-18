@@ -35,10 +35,10 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 | `>= 8.1`    | `pdo_pgsql`  | `PDO::ATTR_STRINGIFY_FETCHES: true`                                           | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
 |             | `pgsql`      |                                                                               | `123`   | `'0.1'` | `0.1` <sup>2</sup> | `true` or `false` |
 
-Notes:
 - <sup>1</sup>mysqli stringifies all values by default when non-prepared statements are used, this can be changed by `MYSQLI_OPT_INT_AND_FLOAT_NATIVE: false` ([docs](https://www.php.net/manual/en/mysqli.quickstart.prepared-statements.php#example-4303))
 - <sup>2</sup>pgsql driver differs when decimal column is fetched (gives `0.1`) and when decimal literal is used (gives `'0.1'`)
 - MySQL server treats `1.23` literals as DECIMALS, if you need FLOAT, use `1.23E0` instead ([docs](https://dev.mysql.com/doc/refman/8.0/en/number-literals.html))
+- Stringified float/decimal numbers may include trailing zeros for some drivers, e.g. `0.000000`
 
 [Full results visible in the test](tests/PhpDatabaseDriverTest.php).
 
