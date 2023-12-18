@@ -43,7 +43,10 @@ Notes:
 [Full results visible in the test](tests/PhpDatabaseDriverTest.php).
 
 ### Why?
-- This knowledge helped me properly [implement precise type infering in phpstan/phpstan-doctrine](https://github.com/phpstan/phpstan-doctrine/pull/506).
+- This knowledge should help me properly [implement precise type infering in phpstan/phpstan-doctrine](https://github.com/phpstan/phpstan-doctrine/pull/506).
+
+### Related issues
+- Please note that you cannot detect `ATTR_STRINGIFY_FETCHES` on PDO in anyway. See [bugreport](https://github.com/php/php-src/issues/12969).
 
 ### Running the tests
 - `printf "UID=$(id -u)\nGID=$(id -g)" > .env`
