@@ -175,6 +175,15 @@ class PhpDatabaseDriverTest extends TestCase
             'setup'      => [], // defaults
         ];
 
+        yield 'pdo_mysql, stringify, emulate' => [
+            'connection' => ['driver' => 'pdo_mysql', 'host' => 'mysql'],
+            'resultMode' => ResultMode::BOTH,
+            'php80-'     => $stringified,
+            'php81+'     => $stringified,
+            'setup'      => [
+                PDO::ATTR_STRINGIFY_FETCHES => true,
+            ],
+        ];
 
         yield 'pdo_pgsql, stringify' => [
             'connection' => ['driver' => 'pdo_pgsql', 'host' => 'pgsql'],
