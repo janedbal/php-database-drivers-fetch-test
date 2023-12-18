@@ -21,7 +21,7 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 | PHP version | Driver       | Configuration / Note                                                          | INT     | FLOAT   | DECIMAL            | BOOL              |
 |-------------|--------------|-------------------------------------------------------------------------------|---------|---------|--------------------|-------------------|
 |             | `sqlite3`    |                                                                               | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
-|             | `mysqli`     | (using prepared statements)<sup>1</sup>                                       | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
+|             | `mysqli`     | (using prepared statements)<sup>1</sup>                                       | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
 | `< 8.1`     | `pdo_sqlite` |                                                                               | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
 | `>= 8.1`    | `pdo_sqlite` |                                                                               | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
 |             | `pdo_sqlite` | `PDO::ATTR_STRINGIFY_FETCHES: true`                                           | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
