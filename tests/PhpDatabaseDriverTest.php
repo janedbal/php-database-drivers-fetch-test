@@ -59,6 +59,9 @@ class PhpDatabaseDriverTest extends TestCase
             : $expectedOnPhp80AndBelow;
 
         foreach ($expected as $select => $expectedType) {
+            if ($expectedType === null) {
+                continue; // e.g. no such function
+            }
             $columnsQuery = sprintf($columnsQueryTemplate, $select);
 
             $result = $connection->executeQuery($columnsQuery)->fetchOne();
@@ -71,50 +74,90 @@ class PhpDatabaseDriverTest extends TestCase
 
     public function provideCases(): iterable
     {
-        $testData = [             // mysql,          sqlite,     pdo_pgsql,     pgsql,    stringified, stringifiedOldPostgre
+        $testData = [               // mysql,          sqlite,     pdo_pgsql,     pgsql,    stringified, stringifiedOldPostgre
             // bool-ish
-            'TRUE' =>               ['int',          'int',      'bool',       'bool',    'string',       'bool',],
-            'FALSE' =>              ['int',          'int',      'bool',       'bool',    'string',       'bool',],
-            'col_bool' =>           ['int',          'int',      'bool',       'bool',    'string',       'bool',],
-            'NOT(col_bool)' =>      ['int',          'int',      'bool',       'bool',    'string',       'bool',],
-            '1 > 2' =>              ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'TRUE' =>                 ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'FALSE' =>                ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'col_bool' =>             ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'NOT(col_bool)' =>        ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            '1 > 2' =>                ['int',          'int',      'bool',       'bool',    'string',       'bool',],
 
             // float-ish
-            'col_float' =>          ['float',        'float',    'string',     'float',   'string',     'string',],
-            'AVG(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
-            'SUM(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
-            'MIN(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
-            'MAX(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
+            'col_float' =>            ['float',        'float',    'string',     'float',   'string',     'string',],
+            'AVG(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+            'SUM(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+            'MIN(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+            'MAX(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+            'SQRT(col_float)' =>      ['float',        'float',    'string',     'float',   'string',     'string',],
+            'ABS(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+            'ROUND(col_float, 0)' =>  ['float',        'float',       null,         null,      null,         null,],  // postgre: function round(double precision, integer) does not exist
+            'ROUND(col_float, 1)' =>  ['float',        'float',       null,         null,      null,         null,],  // postgre: function round(double precision, integer) does not exist
+            'MOD(col_float, 2)' =>    ['float',           null,       null,         null,      null,         null,],  // postgre: function mod(double precision, integer) does not exist
+                                                                                                                      // sqlite: Implicit conversion from float 0.125 to int loses precision in \Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions:46
 
             // decimal-ish
-            'col_decimal' =>        ['string',       'float',    'string',     'string',  'string',     'string',],
-            '0.1' =>                ['string',       'float',    'string',     'string',  'string',     'string',],
-            '0.125e0' =>            ['float',        'float',    'string',     'string',  'string',     'string',],
-            'AVG(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
-            'AVG(col_int)' =>       ['string',       'float',    'string',     'string',  'string',     'string',],
-            'AVG(col_bigint)' =>    ['string',       'float',    'string',     'string',  'string',     'string',],
-            'SUM(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
-            'MIN(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
-            'MAX(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
+            'col_decimal' =>          ['string',       'float',    'string',     'string',  'string',     'string',],
+            '0.1' =>                  ['string',       'float',    'string',     'string',  'string',     'string',],
+            '0.125e0' =>              ['float',        'float',    'string',     'string',  'string',     'string',],
+            'AVG(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
+            'AVG(col_int)' =>         ['string',       'float',    'string',     'string',  'string',     'string',],
+            'AVG(col_bigint)' =>      ['string',       'float',    'string',     'string',  'string',     'string',],
+            'SUM(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
+            'MIN(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
+            'MAX(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
+            'SQRT(col_decimal)' =>    ['float',        'float',    'string',     'string',  'string',     'string',],
+            'ABS(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
+            'ROUND(col_decimal,1)' => ['string',       'float',    'string',     'string',  'string',     'string',],
+            'ROUND(col_decimal,0)' => ['string',       'float',    'string',     'string',  'string',     'string',],
+            'ROUND(col_int, 0)' =>    ['int',          'float',    'string',     'string',  'string',     'string',],
+            'ROUND(col_int, 1)' =>    ['int',          'float',    'string',     'string',  'string',     'string',],
 
             // int-ish
-            '1' =>                  ['int',          'int',      'int',        'int',     'string',     'string',],
-            '2147483648' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
-            'col_int' =>            ['int',          'int',      'int',        'int',     'string',     'string',],
-            'col_bigint' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
-            'SUM(col_int)' =>       ['string',       'int',      'int',        'int',     'string',     'string',],
-            "LENGTH('')" =>         ['int',          'int',      'int',        'int',     'string',     'string',],
-            'COUNT(*)' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
-            'COUNT(1)' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
-            'COUNT(col_int)' =>     ['int',          'int',      'int',        'int',     'string',     'string',],
-            'MIN(col_int)' =>       ['int',          'int',      'int',        'int',     'string',     'string',],
-            'MIN(col_bigint)' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
-            'MAX(col_int)' =>       ['int',          'int',      'int',        'int',     'string',     'string',],
-            'MAX(col_bigint)' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
+            '1' =>                    ['int',          'int',      'int',        'int',     'string',     'string',],
+            '2147483648' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
+            'col_int' =>              ['int',          'int',      'int',        'int',     'string',     'string',],
+            'col_bigint' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
+            'SUM(col_int)' =>         ['string',       'int',      'int',        'int',     'string',     'string',],
+            "LENGTH('')" =>           ['int',          'int',      'int',        'int',     'string',     'string',],
+            'COUNT(*)' =>             ['int',          'int',      'int',        'int',     'string',     'string',],
+            'COUNT(1)' =>             ['int',          'int',      'int',        'int',     'string',     'string',],
+            'COUNT(col_int)' =>       ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MIN(col_int)' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MIN(col_bigint)' =>      ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MAX(col_int)' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MAX(col_bigint)' =>      ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MOD(col_int, 2)' =>      ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MOD(col_bigint, 2)' =>   ['int',          'int',      'int',        'int',     'string',     'string',],
+            'ABS(col_int)' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'col_int & col_int' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
+            'col_int | col_int' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
 
             // string
-            'col_string' =>         ['string',       'string',   'string',     'string',  'string',     'string',],
+            'col_string' =>           ['string',       'string',   'string',     'string',  'string',     'string',],
+            'LOWER(col_string)' =>    ['string',       'string',   'string',     'string',  'string',     'string',],
+            'UPPER(col_string)' =>    ['string',       'string',   'string',     'string',  'string',     'string',],
+            'TRIM(col_string)' =>     ['string',       'string',   'string',     'string',  'string',     'string',],
         ];
+
+        if (PHP_VERSION_ID > 80100) {
+            $testData = array_merge_recursive(
+                $testData,
+                [
+                    // float-ish
+                    'PI()' =>                 ['float',        'float',    'string',     'float',   'string',     'string',],
+                    'SIN(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+                    'COS(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+                    'LOG(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+                    'LOG(col_decimal)' =>     ['float',        'float',    'string',     'string',  'string',     'string',],
+
+                    // int-ish
+                    'CEIL(col_bigint)' =>     ['int',          'int',   'string',      'float',     'string',     'string',],
+                    'FLOOR(col_bigint)' =>    ['int',          'int',   'string',      'float',     'string',     'string',],
+                    'CEIL(col_int)' =>        ['int',          'int',   'string',      'float',     'string',     'string',],
+                    'FLOOR(col_int)' =>       ['int',          'int',   'string',      'float',     'string',     'string',],
+                ]
+            );
+        }
 
         $selects = array_keys($testData);
 

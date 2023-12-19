@@ -7,15 +7,6 @@ When a native type is used and when string is returned? This repository aims to 
 - Tested drivers: `mysqli`, `pdo_sqlite`, `pdo_mysql`, `pdo_pgsql`, `pgsql` (PHP >= 7.4), `sqlite3` (PHP >= 7.4)
 - Used databases: `mysql:8.0`, `postgres:13`, `sqlite:3`
 
-### How?
-Just by running simple queries like those and asserting results:
-
-```sql
-SELECT TRUE, 0.1, 0;
-SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
-```
-
-
 ### Results
 
 - Here is a table with results for **default settings** running on `>= PHP 8.1`:
@@ -34,7 +25,7 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 | MAX(col_float)    | float             | float               | string    | float  |
 | col_decimal       | string            | float               | string    | string |
 | 0.1               | string            | float               | string    | string |
-| 0.125e0           | float             | float               | string    | string |
+| 0.125e0           | **float**         | float               | string    | string |
 | AVG(col_decimal)  | string            | float               | string    | string |
 | AVG(col_int)      | string            | float               | string    | string |
 | AVG(col_bigint)   | string            | float               | string    | string |
@@ -45,7 +36,7 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 | 2147483648        | int               | int                 | int       | int    |
 | col_int           | int               | int                 | int       | int    |
 | col_bigint        | int               | int                 | int       | int    |
-| SUM(col_int)      | string            | int                 | int       | int    |
+| SUM(col_int)      | **string**        | int                 | int       | int    |
 | LENGTH('')        | int               | int                 | int       | int    |
 | COUNT(*)          | int               | int                 | int       | int    |
 | COUNT(1)          | int               | int                 | int       | int    |
@@ -58,11 +49,11 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 
 #### Important notes:
 - Any tested PDO driver can force string for all values by `PDO::ATTR_STRINGIFY_FETCHES: true`
-    - Exception is `pdo_pgsql` which does **not stringify booleans on `< PHP 8.1`**
+    - Exception is `pdo_pgsql` which does not stringify booleans on `< PHP 8.1`
 - `pdo_mysql` stringifies all values on `< PHP 8.1`
     - This can be changed by `PDO::ATTR_EMULATE_PREPARES: false`
 - `pdo_sqlite` stringifies all values on `< PHP 8.1`
-- `mysqli` **stringifies all values by default when non-prepared statements are used**
+- `mysqli` stringifies all values by default when non-prepared statements are used
     - this can be changed by `MYSQLI_OPT_INT_AND_FLOAT_NATIVE: false` ([docs](https://www.php.net/manual/en/mysqli.quickstart.prepared-statements.php#example-4303))
 - Note that you cannot detect `ATTR_STRINGIFY_FETCHES` on PDO in anyway. See [bugreport](https://github.com/php/php-src/issues/12969)
 - MySQL server treats `1.23` literals as DECIMALS, if you need FLOAT, use `1.23E0` instead ([docs](https://dev.mysql.com/doc/refman/8.0/en/number-literals.html))
