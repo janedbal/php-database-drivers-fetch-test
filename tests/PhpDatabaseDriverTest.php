@@ -10,6 +10,7 @@ use LogicException;
 use mysqli;
 use PDO;
 use PgSql\Connection as NativePgsqlConnection;
+use PHPUnit\Framework\Constraint\IsType;
 use PHPUnit\Framework\TestCase;
 use SQLite3;
 
@@ -17,16 +18,12 @@ class PhpDatabaseDriverTest extends TestCase
 {
 
     /**
-     * @param ResultMode::* $resultMode If BOTH, both columns and literals result is expected to match given expected result
-     *                                  If LITERALS, expected result is compared to literals result
-     *                                  If COLUMNS, expected result is compared to columns result
      * @dataProvider provideCases
      */
     public function testFetchedTypes(
         array $connectionParams,
-        string $resultMode,
-        array $expectedResultOnPhp80AndBelow,
-        array $expectedResultOnPhp81AndAbove,
+        array $expectedOnPhp80AndBelow,
+        array $expectedOnPhp81AndAbove,
         array $connectionAttributes
     ): void
     {
@@ -52,71 +49,85 @@ class PhpDatabaseDriverTest extends TestCase
         $this->setupAttributes($nativeConnection, $connectionAttributes);
 
         $connection->executeQuery('DROP TABLE IF EXISTS test');
-        $connection->executeQuery('CREATE TABLE test (col_bool BOOLEAN, col_float FLOAT, col_decimal DECIMAL(2, 1), col_int INT, col_bigint BIGINT)');
-        $connection->executeStatement('INSERT INTO test VALUES (TRUE, 0.125, 0.1, 0, 2147483648)');
+        $connection->executeQuery('CREATE TABLE test (col_bool BOOLEAN, col_float FLOAT, col_decimal DECIMAL(2, 1), col_int INT, col_bigint BIGINT, col_string VARCHAR(255))');
+        $connection->executeQuery('INSERT INTO test VALUES (TRUE, 0.125, 0.1, 0, 2147483648, \'foobar\')');
 
-        $resultLiterals = $connection->executeQuery('
-            SELECT
-                (TRUE),
-                (FALSE),
-                0.1,
-                0.125e0,
-                0,
-                2147483648,
-                COUNT(1),
-                SUM(0),
-                SUM(0.125e0),
-                SUM(0.1),
-                LENGTH(\'\')
-        ')->fetchNumeric();
+        $columnsQueryTemplate = 'SELECT %s FROM test GROUP BY col_int, col_float, col_decimal, col_bigint, col_bool, col_string';
 
-        $resultColumns = $connection->executeQuery('
-            SELECT
-                col_bool,
-                NOT(col_bool),
-                col_decimal,
-                col_float,
-                col_int,
-                col_bigint,
-                COUNT(col_int),
-                SUM(col_int),
-                SUM(col_float),
-                SUM(col_decimal),
-                LENGTH(\'\')
-            FROM test
-            GROUP BY col_int, col_float, col_decimal, col_bigint, col_bool
-        ')->fetchNumeric();
+        $expected = $phpVersion >= 81
+            ? $expectedOnPhp81AndAbove
+            : $expectedOnPhp80AndBelow;
 
-        $connection->executeQuery('DROP TABLE test');
+        foreach ($expected as $select => $expectedType) {
+            $columnsQuery = sprintf($columnsQueryTemplate, $select);
 
-        $expectedResult = $phpVersion >= 81
-            ? $expectedResultOnPhp81AndAbove
-            : $expectedResultOnPhp80AndBelow;
+            $result = $connection->executeQuery($columnsQuery)->fetchOne();
+            $resultType = gettype($result);
+            $resultExported = var_export($result, true);
 
-        if ($resultMode === ResultMode::BOTH || $resultMode === ResultMode::LITERALS) {
-            self::assertSame($expectedResult, $resultLiterals, "Failed for literals result and PHP version: $phpVersion.");
-        }
-        if ($resultMode === ResultMode::BOTH || $resultMode === ResultMode::COLUMNS) {
-            self::assertSame($expectedResult, $resultColumns, "Failed for columns result and PHP version: $phpVersion.");
+            self::assertThat($result, new IsType($expectedType), "Result of 'SELECT {$select}' for '{$this->dataName()}' and PHP $phpVersion is expected to be {$expectedType}, but {$resultType} returned ($resultExported).");
         }
     }
 
     public function provideCases(): iterable
     {
-        // SELECT (columns)          bool, bool,  decimal, float,    int, bigint,     COUNT(int), SUM(int), SUM(float),   SUM(decimal), LENGTH(''),
-        // SELECT (literals)         TRUE, FALSE,  0.1,    0.125e0,  0,   2147483648, COUNT(1),   SUM(0),   SUM(0.125e0), SUM(0.1),     LENGTH(''),
-        $nativeMysql =              [1,    0,     '0.1',   0.125,    0,   2147483648,   1,        '0',      0.125,        '0.1',         0];
-        $nativeSqlite =             [1,    0,      0.1,    0.125,    0,   2147483648,   1,         0,       0.125,         0.1,          0];
-        $nativePostgre =            [true, false, '0.1',  '0.125',   0,   2147483648,   1,         0,      '0.125',       '0.1',         0];
-        $nativePostgreColumnFetch = [true, false, '0.1',   0.125,    0,   2147483648,   1,         0,       0.125,        '0.1',         0];
+        $testData = [             // mysql,          sqlite,     pdo_pgsql,     pgsql,    stringified, stringifiedOldPostgre
+            // bool-ish
+            'TRUE' =>               ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'FALSE' =>              ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'col_bool' =>           ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            'NOT(col_bool)' =>      ['int',          'int',      'bool',       'bool',    'string',       'bool',],
+            '1 > 2' =>              ['int',          'int',      'bool',       'bool',    'string',       'bool',],
 
-        $stringified =              ['1',  '0',   '0.1',  '0.125',  '0', '2147483648', '1',       '0',      '0.125',     '0.1',         '0'];
-        $stringifiedOldPostgre =    [true, false, '0.1',  '0.125',  '0', '2147483648', '1',       '0',      '0.125',     '0.1',         '0'];
+            // float-ish
+            'col_float' =>          ['float',        'float',    'string',     'float',   'string',     'string',],
+            'AVG(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
+            'SUM(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
+            'MIN(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
+            'MAX(col_float)' =>     ['float',        'float',    'string',     'float',   'string',     'string',],
 
+            // decimal-ish
+            'col_decimal' =>        ['string',       'float',    'string',     'string',  'string',     'string',],
+            '0.1' =>                ['string',       'float',    'string',     'string',  'string',     'string',],
+            '0.125e0' =>            ['float',        'float',    'string',     'string',  'string',     'string',],
+            'AVG(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
+            'AVG(col_int)' =>       ['string',       'float',    'string',     'string',  'string',     'string',],
+            'AVG(col_bigint)' =>    ['string',       'float',    'string',     'string',  'string',     'string',],
+            'SUM(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
+            'MIN(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
+            'MAX(col_decimal)' =>   ['string',       'float',    'string',     'string',  'string',     'string',],
+
+            // int-ish
+            '1' =>                  ['int',          'int',      'int',        'int',     'string',     'string',],
+            '2147483648' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'col_int' =>            ['int',          'int',      'int',        'int',     'string',     'string',],
+            'col_bigint' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'SUM(col_int)' =>       ['string',       'int',      'int',        'int',     'string',     'string',],
+            "LENGTH('')" =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'COUNT(*)' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
+            'COUNT(1)' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
+            'COUNT(col_int)' =>     ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MIN(col_int)' =>       ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MIN(col_bigint)' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MAX(col_int)' =>       ['int',          'int',      'int',        'int',     'string',     'string',],
+            'MAX(col_bigint)' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
+
+            // string
+            'col_string' =>         ['string',       'string',   'string',     'string',  'string',     'string',],
+        ];
+
+        $selects = array_keys($testData);
+
+        $nativeMysql = array_combine($selects, array_column($testData, 0));
+        $nativeSqlite = array_combine($selects, array_column($testData, 1));
+        $nativePdoPg = array_combine($selects, array_column($testData, 2));
+        $nativePg = array_combine($selects, array_column($testData, 3));
+
+        $stringified = array_combine($selects, array_column($testData, 4));
+        $stringifiedOldPostgre = array_combine($selects, array_column($testData, 5));
 
         yield 'sqlite3' => [
             'connection' => ['driver' => 'sqlite3', 'memory' => true],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $nativeSqlite,
             'php81+'     => $nativeSqlite,
             'setup'      => [],
@@ -124,7 +135,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_sqlite, no stringify' => [
             'connection' => ['driver' => 'pdo_sqlite', 'memory' => true],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $stringified,
             'php81+'     => $nativeSqlite,
             'setup'      => [],
@@ -132,7 +142,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_sqlite, stringify' => [
             'connection' => ['driver' => 'pdo_sqlite', 'memory' => true],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $stringified,
             'php81+'     => $stringified,
             'setup'      => [PDO::ATTR_STRINGIFY_FETCHES => true],
@@ -140,7 +149,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'mysqli, no native numbers' => [
             'connection' => ['driver' => 'mysqli', 'host' => 'mysql'],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $nativeMysql,
             'php81+'     => $nativeMysql,
             'setup'      => [
@@ -154,7 +162,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'mysqli, native numbers' => [
             'connection' => ['driver' => 'mysqli', 'host' => 'mysql'],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $nativeMysql,
             'php81+'     => $nativeMysql,
             'setup'      => [MYSQLI_OPT_INT_AND_FLOAT_NATIVE => true],
@@ -162,7 +169,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_mysql, stringify, no emulate' => [
             'connection' => ['driver' => 'pdo_mysql', 'host' => 'mysql'],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $stringified,
             'php81+'     => $stringified,
             'setup'      => [
@@ -173,7 +179,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_mysql, no stringify, no emulate' => [
             'connection' => ['driver' => 'pdo_mysql', 'host' => 'mysql'],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $nativeMysql,
             'php81+'     => $nativeMysql,
             'setup'      => [PDO::ATTR_EMULATE_PREPARES => false],
@@ -181,7 +186,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_mysql, no stringify, emulate' => [
             'connection' => ['driver' => 'pdo_mysql', 'host' => 'mysql'],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $stringified,
             'php81+'     => $nativeMysql,
             'setup'      => [], // defaults
@@ -189,7 +193,6 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_mysql, stringify, emulate' => [
             'connection' => ['driver' => 'pdo_mysql', 'host' => 'mysql'],
-            'resultMode' => ResultMode::BOTH,
             'php80-'     => $stringified,
             'php81+'     => $stringified,
             'setup'      => [
@@ -199,7 +202,7 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_pgsql, stringify' => [
             'connection' => ['driver' => 'pdo_pgsql', 'host' => 'pgsql'],
-            'resultMode' => ResultMode::BOTH,
+
             'php80-'     => $stringifiedOldPostgre,
             'php81+'     => $stringified,
             'setup'      => [PDO::ATTR_STRINGIFY_FETCHES => true],
@@ -207,28 +210,17 @@ class PhpDatabaseDriverTest extends TestCase
 
         yield 'pdo_pgsql, no stringify' => [
             'connection' => ['driver' => 'pdo_pgsql', 'host' => 'pgsql'],
-            'resultMode' => ResultMode::BOTH,
-            'php80-'     => $nativePostgre,
-            'php81+'     => $nativePostgre,
+            'php80-'     => $nativePdoPg,
+            'php81+'     => $nativePdoPg,
             'setup'      => [],
         ];
 
-        yield 'pgsql, literals' => [
-            'connection' => ['driver' => 'pgsql','host' => 'pgsql'],
-            'resultMode' => ResultMode::LITERALS,
-            'php80-'     => $nativePostgre,
-            'php81+'     => $nativePostgre,
-            'setup'      => [],
-        ];
-
-        yield 'pgsql, columns' => [
+        yield 'pgsql' => [
             'connection' => ['driver' => 'pgsql', 'host' => 'pgsql'],
-            'resultMode' => ResultMode::COLUMNS, // when fetching columns, pgsql driver starts to return DECIMAL as float
-            'php80-'     => $nativePostgreColumnFetch,
-            'php81+'     => $nativePostgreColumnFetch,
+            'php80-'     => $nativePg,
+            'php81+'     => $nativePg,
             'setup'      => [],
         ];
-
     }
 
     private function setupAttributes($nativeConnection, array $attributes): void

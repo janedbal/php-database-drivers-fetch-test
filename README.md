@@ -18,25 +18,53 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 
 ### Results
 
-| PHP version | Driver       | Configuration / Note                                                          | INT     | FLOAT   | DECIMAL            | BOOL              |
-|-------------|--------------|-------------------------------------------------------------------------------|---------|---------|--------------------|-------------------|
-|             | `sqlite3`    |                                                                               | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
-|             | `mysqli`     | (using prepared statements)<sup>1</sup>                                       | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
-| `< 8.1`     | `pdo_sqlite` |                                                                               | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-| `>= 8.1`    | `pdo_sqlite` |                                                                               | `123`   | `0.1`   | `0.1`              | `1` or `0`        |
-|             | `pdo_sqlite` | `PDO::ATTR_STRINGIFY_FETCHES: true`                                           | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-| `< 8.1`     | `pdo_mysql`  |                                                                               | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-| `>= 8.1`    | `pdo_mysql`  |                                                                               | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
-|             | `pdo_mysql`  | `PDO::ATTR_EMULATE_PREPARES: false`                                           | `123`   | `'0.1'` | `0.1`              | `1` or `0`        |
-|             | `pdo_mysql`  | `PDO::ATTR_STRINGIFY_FETCHES: true`                                           | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-|             | `pdo_mysql`  | `PDO::ATTR_STRINGIFY_FETCHES: true` <br/> `PDO::ATTR_EMULATE_PREPARES: false` | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-|             | `pdo_pgsql`  |                                                                               | `123`   | `'0.1'` | `'0.1'`            | `true` or `false` |
-| `< 8.1`     | `pdo_pgsql`  | `PDO::ATTR_STRINGIFY_FETCHES: true`                                           | `'123'` | `'0.1'` | `'0.1'`            | `true` or `false` |
-| `>= 8.1`    | `pdo_pgsql`  | `PDO::ATTR_STRINGIFY_FETCHES: true`                                           | `'123'` | `'0.1'` | `'0.1'`            | `'1'` or `'0'`    |
-|             | `pgsql`      |                                                                               | `123`   | `'0.1'` | `0.1` <sup>2</sup> | `true` or `false` |
+- Here is a table with results for **default settings** running on `>= PHP 8.1`:
 
-- <sup>1</sup>mysqli stringifies all values by default when non-prepared statements are used, this can be changed by `MYSQLI_OPT_INT_AND_FLOAT_NATIVE: false` ([docs](https://www.php.net/manual/en/mysqli.quickstart.prepared-statements.php#example-4303))
-- <sup>2</sup>pgsql driver differs when decimal column is fetched (gives `0.1`) and when decimal literal is used (gives `'0.1'`)
+| Expression        | pdo_mysql, mysqli | pdo_sqlite, sqlite3 | pdo_pgsql | pgsql  |
+|-------------------|-------------------|---------------------|-----------|--------|
+| TRUE              | int               | int                 | bool      | bool   |
+| FALSE             | int               | int                 | bool      | bool   |
+| col_bool          | int               | int                 | bool      | bool   |
+| NOT(col_bool)     | int               | int                 | bool      | bool   |
+| 1 > 2             | int               | int                 | bool      | bool   |
+| col_float         | float             | float               | string    | float  |
+| AVG(col_float)    | float             | float               | string    | float  |
+| SUM(col_float)    | float             | float               | string    | float  |
+| MIN(col_float)    | float             | float               | string    | float  |
+| MAX(col_float)    | float             | float               | string    | float  |
+| col_decimal       | string            | float               | string    | string |
+| 0.1               | string            | float               | string    | string |
+| 0.125e0           | float             | float               | string    | string |
+| AVG(col_decimal)  | string            | float               | string    | string |
+| AVG(col_int)      | string            | float               | string    | string |
+| AVG(col_bigint)   | string            | float               | string    | string |
+| SUM(col_decimal)  | string            | float               | string    | string |
+| MIN(col_decimal)  | string            | float               | string    | string |
+| MAX(col_decimal)  | string            | float               | string    | string |
+| 1                 | int               | int                 | int       | int    |
+| 2147483648        | int               | int                 | int       | int    |
+| col_int           | int               | int                 | int       | int    |
+| col_bigint        | int               | int                 | int       | int    |
+| SUM(col_int)      | string            | int                 | int       | int    |
+| LENGTH('')        | int               | int                 | int       | int    |
+| COUNT(*)          | int               | int                 | int       | int    |
+| COUNT(1)          | int               | int                 | int       | int    |
+| COUNT(col_int)    | int               | int                 | int       | int    |
+| MIN(col_int)      | int               | int                 | int       | int    |
+| MIN(col_bigint)   | int               | int                 | int       | int    |
+| MAX(col_int)      | int               | int                 | int       | int    |
+| MAX(col_bigint)   | int               | int                 | int       | int    |
+| col_string        | string            | string              | string    | string |
+
+#### Important notes:
+- Any tested PDO driver can force string for all values by `PDO::ATTR_STRINGIFY_FETCHES: true`
+    - Exception is `pdo_pgsql` which does **not stringify booleans on `< PHP 8.1`**
+- `pdo_mysql` stringifies all values on `< PHP 8.1`
+    - This can be changed by `PDO::ATTR_EMULATE_PREPARES: false`
+- `pdo_sqlite` stringifies all values on `< PHP 8.1`
+- `mysqli` **stringifies all values by default when non-prepared statements are used**
+    - this can be changed by `MYSQLI_OPT_INT_AND_FLOAT_NATIVE: false` ([docs](https://www.php.net/manual/en/mysqli.quickstart.prepared-statements.php#example-4303))
+- Note that you cannot detect `ATTR_STRINGIFY_FETCHES` on PDO in anyway. See [bugreport](https://github.com/php/php-src/issues/12969)
 - MySQL server treats `1.23` literals as DECIMALS, if you need FLOAT, use `1.23E0` instead ([docs](https://dev.mysql.com/doc/refman/8.0/en/number-literals.html))
 - Stringified float/decimal numbers may include trailing zeros for some drivers, e.g. `0.000000`
 
@@ -44,9 +72,6 @@ SELECT bool_col, float_col, int_col, decimal_col FROM tbl;
 
 ### Why?
 - This knowledge should help me properly [implement precise type infering in phpstan/phpstan-doctrine](https://github.com/phpstan/phpstan-doctrine/pull/506).
-
-### Related issues
-- Please note that you cannot detect `ATTR_STRINGIFY_FETCHES` on PDO in anyway. See [bugreport](https://github.com/php/php-src/issues/12969).
 
 ### Running the tests
 - `printf "UID=$(id -u)\nGID=$(id -g)" > .env`
