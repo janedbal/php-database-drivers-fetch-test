@@ -50,7 +50,7 @@ class PhpDatabaseDriverTest extends TestCase
 
         $connection->executeQuery('DROP TABLE IF EXISTS test');
         $connection->executeQuery('CREATE TABLE test (col_bool BOOLEAN, col_float FLOAT, col_decimal DECIMAL(2, 1), col_int INT, col_bigint BIGINT, col_string VARCHAR(255))');
-        $connection->executeQuery('INSERT INTO test VALUES (TRUE, 0.125, 0.1, 0, 2147483648, \'foobar\')');
+        $connection->executeQuery('INSERT INTO test VALUES (TRUE, 0.125, 0.1, 9, 2147483648, \'foobar\')');
 
         $columnsQueryTemplate = 'SELECT %s FROM test GROUP BY col_int, col_float, col_decimal, col_bigint, col_bool, col_string';
 
@@ -90,6 +90,7 @@ class PhpDatabaseDriverTest extends TestCase
             'MAX(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
             'SQRT(col_float)' =>      ['float',        'float',    'string',     'float',   'string',     'string',],
             'ABS(col_float)' =>       ['float',        'float',    'string',     'float',   'string',     'string',],
+            'ABS(col_string)' =>      ['float',        'float',       null,         null,      null,         null,],  // postgre: function abs(character varying) does not exist
             'ROUND(col_float, 0)' =>  ['float',        'float',       null,         null,      null,         null,],  // postgre: function round(double precision, integer) does not exist
             'ROUND(col_float, 1)' =>  ['float',        'float',       null,         null,      null,         null,],  // postgre: function round(double precision, integer) does not exist
             'MOD(col_float, 2)' =>    ['float',           null,       null,         null,      null,         null,],  // postgre: function mod(double precision, integer) does not exist
@@ -106,11 +107,16 @@ class PhpDatabaseDriverTest extends TestCase
             'MIN(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
             'MAX(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
             'SQRT(col_decimal)' =>    ['float',        'float',    'string',     'string',  'string',     'string',],
+            'SQRT(col_int)' =>        ['float',        'float',    'string',     'float',   'string',     'string',],
+            'SQRT(col_bigint)' =>     ['float',        null,       'string',     'float',       null,         null,], // sqlite3 returns float, but pdo_sqlite returns NULL
+            'SQRT(-1)' =>             ['null',         'null',       null,          null,       null,         null,], // postgre: cannot take square root of a negative number
             'ABS(col_decimal)' =>     ['string',       'float',    'string',     'string',  'string',     'string',],
             'ROUND(col_decimal,1)' => ['string',       'float',    'string',     'string',  'string',     'string',],
             'ROUND(col_decimal,0)' => ['string',       'float',    'string',     'string',  'string',     'string',],
             'ROUND(col_int, 0)' =>    ['int',          'float',    'string',     'string',  'string',     'string',],
             'ROUND(col_int, 1)' =>    ['int',          'float',    'string',     'string',  'string',     'string',],
+            'MOD(col_decimal, 2)' =>  ['string',           null,       null,         null,      null,         null,],  // postgre: function mod(double precision, integer) does not exist
+                                                                                                                       // sqlite: Implicit conversion from float 0.125 to int loses precision in \Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions:46
 
             // int-ish
             '1' =>                    ['int',          'int',      'int',        'int',     'string',     'string',],
@@ -118,6 +124,7 @@ class PhpDatabaseDriverTest extends TestCase
             'col_int' =>              ['int',          'int',      'int',        'int',     'string',     'string',],
             'col_bigint' =>           ['int',          'int',      'int',        'int',     'string',     'string',],
             'SUM(col_int)' =>         ['string',       'int',      'int',        'int',     'string',     'string',],
+            'SUM(col_bigint)' =>      ['string',       'int',      'string',     'string',  'string',     'string',],
             "LENGTH('')" =>           ['int',          'int',      'int',        'int',     'string',     'string',],
             'COUNT(*)' =>             ['int',          'int',      'int',        'int',     'string',     'string',],
             'COUNT(1)' =>             ['int',          'int',      'int',        'int',     'string',     'string',],
@@ -129,6 +136,7 @@ class PhpDatabaseDriverTest extends TestCase
             'MOD(col_int, 2)' =>      ['int',          'int',      'int',        'int',     'string',     'string',],
             'MOD(col_bigint, 2)' =>   ['int',          'int',      'int',        'int',     'string',     'string',],
             'ABS(col_int)' =>         ['int',          'int',      'int',        'int',     'string',     'string',],
+            'ABS(col_bigint)' =>      ['int',          'int',      'int',        'int',     'string',     'string',],
             'col_int & col_int' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
             'col_int | col_int' =>    ['int',          'int',      'int',        'int',     'string',     'string',],
 

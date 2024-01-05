@@ -55,7 +55,7 @@ When a native type is used and when string is returned? This repository aims to 
 - `pdo_sqlite` stringifies all values on `< PHP 8.1`
 - `mysqli` stringifies all values by default when non-prepared statements are used
     - this can be changed by `MYSQLI_OPT_INT_AND_FLOAT_NATIVE: false` ([docs](https://www.php.net/manual/en/mysqli.quickstart.prepared-statements.php#example-4303))
-- Note that you cannot detect `ATTR_STRINGIFY_FETCHES` on PDO in anyway. See [bugreport](https://github.com/php/php-src/issues/12969)
+- Note that you cannot detect `ATTR_STRINGIFY_FETCHES` on PDO in any way. See [bugreport](https://github.com/php/php-src/issues/12969)
 - MySQL server treats `1.23` literals as DECIMALS, if you need FLOAT, use `1.23E0` instead ([docs](https://dev.mysql.com/doc/refman/8.0/en/number-literals.html))
 - Stringified float/decimal numbers may include trailing zeros for some drivers, e.g. `0.000000`
 
