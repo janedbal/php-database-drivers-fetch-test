@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This repository is no longer updated. To study behaviour differences, see [platform matrix test in phpstan/phpstan-doctrine](https://github.com/phpstan/phpstan-doctrine/blob/be66017/tests/Platform/QueryResultTypeWalkerFetchTypeMatrixTest.php) which has far bigger dataset.
+
 ## How different PHP database drivers fetch numbers and booleans
 
 When a native type is used and when string is returned? This repository aims to verify behaviour of PHP connectors to MySQL, PgSQL and SQLite with different configurations and PHP versions.
